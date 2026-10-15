@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notepad Post Maker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon.ico">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#2a2438">
+<style>
+  :root { color-scheme: dark; --bg:#2a2438; --card:#352d49; --line:#4b4166; --pink:#ff6b9d; --lav:#c084fc; --text:#f3eefc; --muted:#a99cc4; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:radial-gradient(circle at 20% 0%, #3b2f57 0%, var(--bg) 55%); min-height:100vh; color:var(--text); font-family:"Segoe UI",system-ui,sans-serif; padding:18px 16px 40px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+  h1 { font-size:22px; margin:0; font-weight:700; letter-spacing:.2px; }
+  h1 small { display:block; text-align:center; font-size:12px; font-weight:500; color:var(--muted); margin-top:2px; }
+  textarea { width:100%; max-width:540px; height:150px; background:var(--card); color:var(--text); border:2px solid var(--line); border-radius:16px; padding:14px; font:16px Consolas,"Courier New",monospace; resize:vertical; outline:none; transition:border-color .15s; }
+  textarea:focus { border-color:var(--pink); }
+  .row { display:flex; gap:10px 14px; flex-wrap:wrap; align-items:center; justify-content:center; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:10px 14px; max-width:540px; }
+  label { font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  button { background:linear-gradient(135deg,var(--pink),var(--lav)); color:#fff; border:0; border-radius:999px; padding:10px 20px; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 4px 14px rgba(255,107,157,.3); transition:transform .1s; }
+  button:hover { transform:translateY(-1px); } button:active { transform:scale(.97); }
+  button.soft { background:#4b4166; box-shadow:none; }
+  select { background:#2a2438; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:4px 6px; }
+  select, input[type=range] { accent-color:var(--pink); }
+  input[type=color] { width:44px; height:32px; padding:0; border:2px solid var(--line); border-radius:10px; background:none; cursor:pointer; }
+  canvas { width:100%; max-width:432px; height:auto; border:3px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+  #status { font-size:13px; color:var(--muted); text-align:center; max-width:540px; }
+</style>
+</head>
+<body>
+<h1>📝 Notepad Post Maker<small>1080 × 1350 posts, saved straight to your folder ✨</small></h1>
+<textarea id="t" placeholder="Type here..."></textarea>
+<div class="row">
+  <label>Background <input id="bg" type="color" value="#272727"></label>
+  <label>Text <input id="fg" type="color" value="#e8e8e8"></label>
+  <label>Presets
+    <select id="preset">
+      <option value="">Custom</option>
+      <option value="#272727,#e8e8e8">Notepad dark</option>
+      <option value="#ffffff,#111111">Classic white</option>
+      <option value="#0f172a,#38bdf8">Midnight blue</option>
+      <option value="#fef3c7,#78350f">Warm paper</option>
+      <option value="#000000,#22c55e">Terminal green</option>
+      <option value="#1e1b4b,#f0abfc">Purple neon</option>
+      <option value="#7f1d1d,#fecaca">Deep red</option>
+    </select>
+  </label>
+</div>
+<div class="row">
+  <label>Font size <input id="size" type="range" min="30" max="90" value="52"></label>
+  <label>Position
+    <select id="pos"><option value="top">Top</option><option value="center">Center</option></select>
+  </label>
+  <button id="pick" class="soft">📁 Choose save folder</button>
+  <button id="dl">💾 Save post</button>
+  <button id="install" class="soft" style="display:none">⬇ Install app</button>
+</div>
+<div id="status"></div>
+<canvas id="c" width="1080" height="1350"></canvas>
+<script>
+const c = document.getElementById('c'), x = c.getContext('2d');
+const t = document.getElementById('t'), size = document.getElementById('size'), pos = document.getElementById('pos');
+const PAD = 70;
+const bgIn = document.getElementById('bg'), fgIn = document.getElementById('fg'), preset = document.getElementById('preset');
+
+function wrap(text, maxW) {
+  const lines = [];
+  text.split('\n').forEach(p => {
+    if (p === '') { lines.push(''); return; }
+    let line = '';
+    p.split(' ').forEach(w => {
+      const test = line ? line + ' ' + w : w;
+      if (x.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+      else line = test;
+    });
+    lines.push(line);
+  });
+  return lines;
+}
+
+function draw() {
+  const fs = +size.value, lh = fs * 1.45;
+  x.fillStyle = bgIn.value; x.fillRect(0, 0, 1080, 1350);
+  x.font = fs + 'px Consolas, "Courier New", monospace';
+  x.fillStyle = fgIn.value; x.textBaseline = 'top';
+  const lines = wrap(t.value, 1080 - PAD * 2);
+  const total = lines.length * lh;
+  let y = pos.value === 'center' ? Math.max(PAD, (1350 - total) / 2) : PAD;
+  lines.forEach(l => { x.fillText(l, PAD, y); y += lh; });
+  try { localStorage.setItem('np_text', t.value); localStorage.setItem('np_colors', bgIn.value + ',' + fgIn.value); } catch (e) {}
+}
+
+try {
+  t.value = localStorage.getItem('np_text') || '';
+  const sc = (localStorage.getItem('np_colors') || '').split(',');
+  if (sc.length === 2) { bgIn.value = sc[0]; fgIn.value = sc[1]; }
+} catch (e) {}
+[t, size, pos, bgIn, fgIn].forEach(el => el.addEventListener('input', draw));
+[bgIn, fgIn].forEach(el => el.addEventListener('input', () => { preset.value = ''; }));
+preset.addEventListener('change', () => {
+  if (!preset.value) return;
+  const [b, f] = preset.value.split(',');
+  bgIn.value = b; fgIn.value = f; draw();
+});
+
+// ---------- Save to a chosen folder (remembered between visits) ----------
+const status = document.getElementById('status');
+const canPick = 'showDirectoryPicker' in window;
+let dirHandle = null;
+
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('np_db', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function kvGet(k) { const d = await idb(); return new Promise(res => { const q = d.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); }
+async function kvSet(k, v) { const d = await idb(); return new Promise(res => { const tx = d.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = res; }); }
+
+function showStatus() {
+  if (!canPick) { status.textContent = 'This browser cannot save to a folder - use Chrome or Edge. Falling back to normal download.'; return; }
+  status.textContent = dirHandle ? 'Saving to folder: ' + dirHandle.name : 'No folder chosen yet - click "Choose save folder" first.';
+}
+
+async function pickFolder() {
+  try {
+    dirHandle = await window.showDirectoryPicker({ id: 'notepad-posts', mode: 'readwrite' });
+    await kvSet('dir', dirHandle);
+  } catch (e) { /* cancelled */ }
+  showStatus();
+}
+
+async function ensurePermission() {
+  if (!dirHandle) return false;
+  if ((await dirHandle.queryPermission({ mode: 'readwrite' })) === 'granted') return true;
+  return (await dirHandle.requestPermission({ mode: 'readwrite' })) === 'granted';
+}
+
+async function nextName() {
+  let max = 0;
+  for await (const [name] of dirHandle.entries()) {
+    const m = /^post_(\d+)\.png$/i.exec(name);
+    if (m) max = Math.max(max, +m[1]);
+  }
+  return 'post_' + String(max + 1).padStart(3, '0') + '.png';
+}
+
+function fallbackDownload() {
+  const a = document.createElement('a');
+  a.download = 'post.png'; a.href = c.toDataURL('image/png'); a.click();
+}
+
+async function savePost() {
+  if (!canPick) { fallbackDownload(); return; }
+  if (!dirHandle) { await pickFolder(); if (!dirHandle) return; }
+  if (!(await ensurePermission())) { status.textContent = 'Permission denied - click "Choose save folder" again.'; return; }
+  try {
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    const name = await nextName();
+    const fh = await dirHandle.getFileHandle(name, { create: true });
+    const w = await fh.createWritable();
+    await w.write(blob); await w.close();
+    status.textContent = 'Saved ' + name + ' in folder: ' + dirHandle.name;
+  } catch (e) {
+    status.textContent = 'Could not save (' + e.name + '). Try choosing the folder again.';
+  }
+}
+
+document.getElementById('pick').onclick = pickFolder;
+document.getElementById('dl').onclick = savePost;
+
+(async () => {
+  if (canPick) { try { dirHandle = await kvGet('dir') || null; } catch (e) {} }
+  showStatus();
+})();
+
+// ---------- Install as app ----------
+let deferredPrompt = null;
+const installBtn = document.getElementById('install');
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; installBtn.style.display = ''; });
+installBtn.onclick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; };
+window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+
+draw();
+</script>
+</body>
+</html>
